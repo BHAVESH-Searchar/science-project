@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tic Tac Toe Pro</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #020617;
+      color: white;
+      text-align: center;
+    }
+    .hidden { display: none; }
+    button, select {
+      padding: 8px 14px;
+      margin: 5px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 6px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: #0f172a;
+      font-size: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .cell:hover { background: #1e293b; }
+  </style>
+</head>
+
+<body>
+
+<h1>🎮 Tic Tac Toe – Pro Edition</h1>
+
+<!-- MENU -->
+<div id="menu">
+  <h3>Select Mode</h3>
+  <button onclick="startGame('pvp')">👥 Player vs Player</button>
+  <button onclick="startGame('cpu')">🤖 Player vs Computer</button>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="hidden">
+  <label>AI Level:</label>
+  <select id="level">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+
+  <label>AI Speed:</label>
+  <select id="speed">
+    <option value="1000">Slow</option>
+    <option value="500" selected>Normal</option>
+    <option value="200">Fast</option>
+  </select>
+</div>
+
+<!-- GAME -->
+<div id="game" class="hidden">
+  <h2 id="status">Player X Turn</h2>
+  <div class="board" id="board"></div>
+  <button onclick="resetGame()">🔁 Restart</button>
+  <button onclick="goBack()">⬅ Back</button>
+</div>
+
+<script>
+  let board = ["","","","","","","","",""];
+  let current = "X";
+  let mode = "";
+  let gameOver = false;
+
+  const win = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  const boardDiv = document.getElementById("board");
+  for (let i=0;i<9;i++){
+    let c=document.createElement("div");
+    c.className="cell";
+    c.onclick=()=>move(i);
+    boardDiv.appendChild(c);
+  }
+
+  function startGame(m){
+    mode=m;
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("game").classList.remove("hidden");
+    document.getElementById("settings").classList.toggle("hidden", m==="pvp");
+    resetGame();
+  }
+
+  function move(i){
+    if(board[i]!==""||gameOver) return;
+    board[i]=current;
+    render();
+
+    if(checkWin(current)) return end("🎉 Player "+current+" Wins");
+    if(draw()) return end("🤝 Draw");
+
+    current = current==="X"?"O":"X";
+    document.getElementById("status").innerText="Player "+current+" Turn";
+
+    if(mode==="cpu" && current==="O"){
+      let delay = document.getElementById("speed").value;
+      setTimeout(aiMove, delay);
+    }
+  }
+
+  function aiMove(){
+    if(gameOver) return;
+    let level=document.getElementById("level").value;
+    let moveIndex;
+
+    if(level==="easy") moveIndex=randomMove();
+    else if(level==="medium") moveIndex=blockOrWin();
+    else moveIndex=minimax(board,"O").index;
+
+    board[moveIndex]="O";
+    render();
+
+    if(checkWin("O")) return end("🤖 Computer Wins");
+    if(draw()) return end("🤝 Draw");
+
+    current="X";
+    document.getElementById("status").innerText="Player X Turn";
+  }
+
+  function randomMove(){
+    let e=board.map((v,i)=>v==""?i:null).filter(v=>v!==null);
+    return e[Math.floor(Math.random()*e.length)];
+  }
+
+  function blockOrWin(){
+    for(let i=0;i<9;i++){
+      if(board[i]==""){
+        board[i]="O"; if(checkWin("O")){board[i]="";return i;}
+        board[i]="X"; if(checkWin("X")){board[i]="";return i;}
+        board[i]="";
+      }
+    }
+    return randomMove();
+  }
+
+  function minimax(b,p){
+    let avail=b.map((v,i)=>v==""?i:null).filter(v=>v!==null);
+    if(checkWin("X")) return {score:-10};
+    if(checkWin("O")) return {score:10};
+    if(avail.length===0) return {score:0};
+
+    let moves=[];
+    for(let i of avail){
+      let move={index:i};
+      b[i]=p;
+      move.score=minimax(b,p==="O"?"X":"O").score;
+      b[i]="";
+      moves.push(move);
+    }
+
+    let best;
+    if(p==="O"){
+      let max=-1000;
+      for(let m of moves) if(m.score>max){max=m.score;best=m;}
+    }else{
+      let min=1000;
+      for(let m of moves) if(m.score<min){min=m.score;best=m;}
+    }
+    return best;
+  }
+
+  function checkWin(p){
+    return win.some(c=>c.every(i=>board[i]===p));
+  }
+
+  function draw(){ return board.every(c=>c!==""); }
+
+  function render(){
+    document.querySelectorAll(".cell").forEach((c,i)=>c.innerText=board[i]);
+  }
+
+  function end(msg){
+    document.getElementById("status").innerText=msg;
+    gameOver=true;
+  }
+
+  function resetGame(){
+    board=["","","","","","","","",""];
+    current="X"; gameOver=false;
+    document.getElementById("status").innerText="Player X Turn";
+    render();
+  }
+
+  function goBack(){
+    resetGame();
+    document.getElementById("game").classList.add("hidden");
+    document.getElementById("menu").classList.remove("hidden");
+    document.getElementById("settings").classList.add("hidden");
+  }
+</script>
+
+</body>
+</html>
